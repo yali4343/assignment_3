@@ -1,0 +1,1087 @@
+openapi: 3.0.3
+info:
+  title: Recipes API
+  description: API for recipes project.
+  version: 1.0.0
+servers:
+  - description: Localhost API
+    url: http://localhost
+  # - description: Partner's mock server
+  #   url: https://virtserver.swaggerhub.com/AmitDvash/WebDevelopmentCourse/1.0.0
+tags:
+  - name: Auth
+    description: Authentication
+  - name: Recipes
+    description: Recipe management and operations
+  - name: Users
+    description: User management
+
+paths:
+  /Login:
+    post:
+      tags:
+        - Auth
+      summary: Log in an existing user
+      description: An existing user logs in to the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Login"
+      responses:
+        "200":
+          description: Login succeeded
+        "401":
+          description: Username or Password incorrect
+
+  /Register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      description: Adds a new user to the server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User"
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Missing required fields
+        "409":
+          description: Username taken
+
+  /Logout:
+    post:
+      tags:
+        - Auth
+      summary: Log out a user
+      description: Logs the user out of the system and clears the session.
+      responses:
+        "200":
+          description: Logout succeeded
+
+  /recipes/{recipeId}:
+    get:
+      tags:
+        - Recipes
+      summary: Return full details of a recipe
+      description: Returns a JSON object containing the full details about the recipe.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Recipe unique ID
+      responses:
+        "200":
+          description: Recipe full details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FullRecipe"
+        "404":
+          description: Recipe with the given ID does not exist
+  /recipes/random:
+    get:
+      tags:
+        - Recipes
+      summary: Get three random recipes
+      description: Fetches three random recipes, considering user preferences if logged in.
+      responses:
+        "200":
+          description: Three random recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "404":
+          description: Recipes not found
+        "500":
+          description: Internal server error
+
+  /users/markwatched/{recipeId}:
+    post:
+      tags:
+        - Users
+      summary: Mark a recipe as watched
+      description: Marks the specified recipe as watched by the logged-in user.
+      parameters:
+        - in: path
+          name: recipeId
+          required: true
+          schema:
+            type: string
+            description: Recipe unique ID
+      responses:
+        "200":
+          description: Recipe marked as watched
+        "401":
+          description: User not logged in
+
+  /users/deleteWatchedRecipes:
+    delete:
+      tags:
+        - Users
+      summary: Delete all watched recipes
+      description: Removes all the watched recipes for the logged-in user.
+      responses:
+        "200":
+          description: All watched recipes deleted
+        "401":
+          description: User not logged in
+
+  /recipes/search:
+    get:
+      tags:
+        - Recipes
+      summary: Search for recipes using the Spoonacular API
+      description: Returns the matching recipes. The default number of results returned is 5.
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            description: The (natural language) recipe search query.
+        - in: query
+          name: number
+          schema:
+            type: integer
+            default: 5
+            minimum: 5
+            enum: [5, 10, 15]
+            description: The number of expected results -5/10/15 (default is 5).
+
+        - in: query
+          name: cuisine
+          schema:
+            type: string
+            description: The cuisine(s) of the recipes.
+
+        - in: query
+          name: diet
+          schema:
+            type: string
+            description: The diet(s) for which the recipes must be suitable.
+
+        - in: query
+          name: intolerance
+          schema:
+            type: string
+            description: A comma-separated list of intolerances.
+      responses:
+        "200":
+          description: A list of the matching recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "204":
+          description: There are no matching recipies
+        "400":
+          description: Query parameter is missing
+
+  /recipes/{recipeId}/like:
+    post:
+      tags:
+        - Recipes
+      summary: Like or unlike a recipe
+      description: Allows a logged-in user to like or unlike a Spoonacular recipe.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Spoonacular recipe unique ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                like:
+                  type: boolean
+                  description: True to like, false to unlike
+                  example: true
+              required:
+                - like
+      responses:
+        "200":
+          description: Like status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  totalLikes:
+                    type: integer
+                    description: Combined likes from Spoonacular and users
+                  userHasLiked:
+                    type: boolean
+                    description: Current user's like status
+        "400":
+          description: Invalid request body
+        "401":
+          description: User not authenticated
+
+  /users/favorites:
+    get:
+      tags:
+        - Users
+      summary: Return user's favorite recipes
+      description: Returns the favorite recipes saved by the logged-in user.
+      responses:
+        "200":
+          description: A list of all user's favorite recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - Users
+      summary: Save a recipe in the user's favorites list
+      description: Adds the chosen recipe to the favorites list of the logged-in user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipeId:
+                  type: integer
+                  description: The recipe's ID to save
+                  example: 716429
+      responses:
+        "200":
+          description: Recipe successfully saved in the favorites list
+        "400":
+          description: Recipe does not exist
+        "401":
+          description: Unauthorized
+
+    delete:
+      tags:
+        - Users
+      summary: Remove a recipe from the user's favorites list
+      description: Removes the chosen recipe from the favorites list of the logged-in user.
+      parameters:
+        - in: query
+          name: recipeId
+          required: true
+          schema:
+            type: integer
+            description: The recipe's ID to remove
+            example: 716429
+      responses:
+        "200":
+          description: Recipe successfully removed from the favorites list
+        "401":
+          description: Unauthorized
+
+  /users/myRecipes:
+    get:
+      tags:
+        - Users
+      summary: Return user's private recipes
+      description: Returns a JSON object containing preview details about all the private recipes of the logged-in user.
+      responses:
+        "200":
+          description: List of all user's private recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PrivateRecipe"
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - Users
+      summary: Add a new recipe to the user's private recipes
+      description: Adds a new recipe to the private list of the logged-in user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddFullPrivateRecipe"
+      responses:
+        "201":
+          description: The private recipe was successfully created
+        "400":
+          description: Missing required parameters
+        "401":
+          description: Unauthorized
+
+  /users/myRecipes/{recipeId}:
+    get:
+      tags:
+        - Users
+      summary: Return full details of a private recipe
+      description: Returns a JSON object containing the full details about this private recipe.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Private recipe unique ID
+      responses:
+        "200":
+          description: Private recipe full details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FullPrivateRecipe"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Private recipe with the given ID does not exist
+    delete:
+      tags:
+        - Users
+      summary: Delete a private recipe
+      description: Deletes a specific private recipe that belongs to the logged-in user.
+      parameters:
+        - name: recipeId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Private recipe unique ID
+      responses:
+        "200":
+          description: Private recipe deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Recipe deleted successfully"
+                  success:
+                    type: boolean
+                    example: true
+        "400":
+          description: Invalid recipe ID format
+        "401":
+          description: Unauthorized
+        "404":
+          description: Private recipe not found or not owned by user
+        "500":
+          description: Failed to delete private recipe
+
+  /users/lastWatchedRecipes:
+    get:
+      tags:
+        - Users
+      summary: Return the user's last 3 watched recipes
+      description: Returns preview details about the last 3 watched recipes of the logged-in user.
+      responses:
+        "200":
+          description: Preview details of the last 3 watched recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "401":
+          description: Unauthorized
+
+  /users/allWatchedRecipes:
+    get:
+      tags:
+        - Users
+      summary: Return the user's watched recipes
+      description: Returns preview details about the watched recipes of the logged-in user.
+      responses:
+        "200":
+          description: Preview details of the watched recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "401":
+          description: Unauthorized
+  /users/lastSearch:
+    get:
+      tags:
+        - Users
+      summary: Return the user's last search results
+      description:
+        Returns a list of all the matching recipes returned in the last search of the logged-in user.
+        If the user disconnects from the site or connects from another browser, the last search results will not be shown.
+      responses:
+        "200":
+          description: User's last search results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewRecipe"
+        "401":
+          description: Unauthorized
+
+  /users/familyRecipes:
+    get:
+      tags:
+        - Users
+      summary: Get all family recipes for the logged-in user
+      description: Returns a list of all family recipes belonging to the user.
+      responses:
+        "200":
+          description: A list of family recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/previewFamilyRecipe"
+        "204":
+          description: Fewer than 3 family recipes found
+        "401":
+          description: Unauthorized
+    post:
+      tags:
+        - Users
+      summary: Add a new family recipe
+      description: Adds a new family recipe for the logged-in user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddFamilyRecipe"
+      responses:
+        "201":
+          description: Family recipe created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+                  recipe_id:
+                    type: integer
+        "400":
+          description: Missing required fields
+        "401":
+          description: Unauthorized
+        "500":
+          description: Failed to create family recipe
+
+  /users/familyRecipes/{recipeId}:
+    get:
+      tags:
+        - Users
+      summary: Get full details of a specific family recipe
+      description: Returns the complete details of a family recipe including ingredients, instructions, and preparation information.
+      parameters:
+        - in: path
+          name: recipeId
+          required: true
+          schema:
+            type: string
+          description: The ID of the family recipe to retrieve
+      responses:
+        "200":
+          description: Family recipe details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FullFamilyRecipe"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Recipe not found or not owned by user
+    delete:
+      tags:
+        - Users
+      summary: Delete a family recipe
+      description: Deletes a specific family recipe for the logged-in user.
+      parameters:
+        - in: path
+          name: recipeId
+          required: true
+          schema:
+            type: string
+          description: The ID of the family recipe to delete
+      responses:
+        "200":
+          description: Family recipe deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+        "400":
+          description: Invalid recipe ID format
+        "401":
+          description: Unauthorized
+        "404":
+          description: Family recipe not found or not owned by user
+        "500":
+          description: Failed to delete family recipe
+
+components:
+  schemas:
+    Login:
+      required:
+        - username
+        - password
+      type: object
+      description: Model containing login info
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 8
+          description: Username contains between 3 to 8 characters.
+          example: amitdva
+        password:
+          type: string
+          minLength: 5
+          maxLength: 10
+          format: password
+          description: >
+            Password contains between 5 to 10 characters,
+            at least one of them is a number and a special character.
+          example: amit@123
+
+    User:
+      required:
+        - userName
+        - firstName
+        - lastName
+        - country
+        - password
+        - passwordConfirmation
+        - email
+      type: object
+      description: Model containing user info
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 8
+          description: User's unique username from 3 to 8 characters, and only letters from the English alphabet, numbers are not allowed
+          pattern: "^[a-zA-Z]{3,8}$"
+          example: amitdva
+        firstname:
+          type: string
+          description: First name of the user.
+          example: Amit
+        lastname:
+          type: string
+          description: Last name of the user.
+          example: Dvash
+        country:
+          type: string
+          description: User's country, must be one of the country names from the external REST Countries API (https://restcountries.com/v3.1/all).
+          example: Israel
+        password:
+          type: string
+          minLength: 5
+          maxLength: 10
+          pattern: "^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,10}$"
+          format: password
+          description: >
+            Password contains between 5 to 10 characters,
+            at least one of them is a number and a special character.
+          example: amit@123
+        passwordConfirmation:
+          type: string
+          description: Confirmation of password, must match password
+          minLength: 5
+          format: password
+        email:
+          type: string
+          format: email
+          description: User's email.
+          example: amitdva@post.bgu.ac.il
+
+    previewRecipe:
+      type: object
+      description: Model containing recipe preview details
+      properties:
+        id:
+          type: integer
+          description: Recipe ID in Spoonacular.
+          example: 639477
+        image:
+          type: string
+          format: uri
+          description: URL of the recipe's image.
+          example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+        title:
+          type: string
+          description: Name of the recipe.
+          example: Cinnamon Roll Oatmeal
+        readyInMinutes:
+          type: integer
+          description: Time it takes to make the recipe.
+          example: 45
+        popularity:
+          type: integer
+          description: Combined number of likes from Spoonacular and users.
+          example: 1
+        vegan:
+          type: boolean
+          description: Indicates if the recipe is vegan.
+          example: false
+        vegetarian:
+          type: boolean
+          description: Indicates if the recipe is vegetarian.
+          example: true
+        glutenFree:
+          type: boolean
+          description: Indicates if the recipe is gluten-free.
+          example: true
+        isWatched:
+          type: boolean
+          description: True if the logged-in user has already watched this recipe.
+          example: false
+        isFavorite:
+          type: boolean
+          description: True if the logged-in user has added this recipe to their favorites.
+          example: false
+        userHasLiked:
+          type: boolean
+          description: True if the logged-in user has liked this recipe.
+          example: false
+        FullRecipe:
+          type: object
+          description: Model containing full recipe details
+          properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Combined number of likes from Spoonacular and users.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  description: Quantity of the ingredient.
+                  example: 5
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: cinnamon
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 1
+          userHasLiked:
+            type: boolean
+            description: True if the logged-in user has liked this recipe.
+            example: false
+
+      previewFamilyRecipe:
+        type: object
+        description: Model containing recipe preview details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's/family member with the food - image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Number of likes.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          recipeOwner:
+            type: string
+            description: who owns the recipe
+            example: Amit's grandmother
+          whenWeMake:
+            type: string
+            description: when the family\owner usually make it
+            example: Passover
+
+      FullFamilyRecipe:
+        type: object
+        description: Model containing full recipe details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in Spoonacular.
+            example: 639477
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's/family member with the food - image.
+            example: https://spoonacular.com/recipeImages/639477-312x231.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Cinnamon Roll Oatmeal
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          popularity:
+            type: integer
+            description: Number of likes.
+            example: 1
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: false
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          isWatched:
+            type: boolean
+            description: True if the logged-in user has already watched this recipe.
+            example: false
+          isFavorite:
+            type: boolean
+            description: True if the logged-in user has added this recipe to their favorites.
+            example: false
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  description: Quantity of the ingredient.
+                  example: 5
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: cinnamon
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: Preheat oven to 375 F. Combine all ingredients for the oatmeal and mix together very well. Set aside...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 1
+          recipeOwner:
+            type: string
+            description: who owns the recipe
+            example: Amit's grandmother
+          whenWeMake:
+            type: string
+            description: when the family\owner usually make it
+            example: Passover
+
+      AddFamilyRecipe:
+        type: object
+        description: Model for adding a new family recipe
+        required:
+          - recipe_name
+          - owner_name
+          - when_to_prepare
+          - ingredients
+          - instructions
+        properties:
+          recipe_name:
+            type: string
+            description: Name of the family recipe.
+            example: Grandma's Special Lasagna
+          owner_name:
+            type: string
+            description: Who in the family is known for this recipe.
+            example: Grandma Maria
+          when_to_prepare:
+            type: string
+            description: Occasion or time when this recipe is typically made.
+            example: Sunday dinners
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: Lasagna noodles
+                amount:
+                  type: string # Changed to string to allow for "1 box" or "2 cups"
+                  description: Quantity of the ingredient.
+                  example: "1 box"
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: 1. Cook noodles. 2. Prepare sauce...
+          image_url:
+            type: string
+            format: uri
+            description: Optional URL of an image for the recipe.
+            example: https://example.com/lasagna.jpg
+
+      PrivateRecipe:
+        type: object
+        description: Model containing private recipe preview details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in the private recipes table.
+            example: 1
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+
+      FullPrivateRecipe:
+        type: object
+        description: Model containing full private recipe details
+        properties:
+          id:
+            type: integer
+            description: Recipe ID in the private recipes table.
+            example: 1
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Quantity of the ingredient.
+                  example: 4 large
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: potatoes
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 4
+
+      AddFullPrivateRecipe:
+        required:
+          - title
+          - readyInMinutes
+          - image
+          - vegan
+          - vegetarian
+          - glutenFree
+          - ingredients
+          - instructions
+          - servings
+        type: object
+        description: Model containing full private recipe details for adding a new recipe
+        properties:
+          image:
+            type: string
+            format: uri
+            description: URL of the recipe's image.
+            example: roasted_potatoes.jpg
+          title:
+            type: string
+            description: Name of the recipe.
+            example: Roasted Potatoes
+          readyInMinutes:
+            type: integer
+            description: Time it takes to make the recipe.
+            example: 45
+          vegan:
+            type: boolean
+            description: Indicates if the recipe is vegan.
+            example: true
+          vegetarian:
+            type: boolean
+            description: Indicates if the recipe is vegetarian.
+            example: true
+          glutenFree:
+            type: boolean
+            description: Indicates if the recipe is gluten-free.
+            example: true
+          ingredients:
+            type: array
+            items:
+              type: object
+              properties:
+                amount:
+                  type: string
+                  description: Quantity of the ingredient.
+                  example: 4 large
+                name:
+                  type: string
+                  description: Name of the ingredient.
+                  example: potatoes
+            description: List of ingredients and their quantities.
+          instructions:
+            type: string
+            description: Step-by-step instructions on how to prepare the recipe.
+            example: 1. Preheat the oven to 425°F (220°C). 2. Wash and cut the potatoes into small cubes...
+          servings:
+            type: integer
+            description: Number of servings.
+            example: 4
