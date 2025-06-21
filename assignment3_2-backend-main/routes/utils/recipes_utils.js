@@ -251,21 +251,6 @@ async function getRandomRecipes(count = 3) {
   const endpoint = "random_recipes";
   const params = { number: count };
 
-  // Check cache first
-  const cachedData = await cacheManager.get(endpoint, params);
-  if (cachedData) {
-    return cachedData.map((recipe) => ({
-      id: recipe.id,
-      title: recipe.title,
-      readyInMinutes: recipe.readyInMinutes,
-      image: recipe.image,
-      popularity: recipe.aggregateLikes,
-      vegan: recipe.vegan,
-      vegetarian: recipe.vegetarian,
-      glutenFree: recipe.glutenFree,
-    }));
-  }
-
   try {
     console.log(`🌐 API call for ${count} random recipes`);
     const response = await axios.get(`${api_domain}/random`, {
@@ -403,7 +388,8 @@ async function searchRecipes(
   cuisine,
   diet,
   intolerance,
-  sort
+  sort,
+  user_id = null
 ) {
   if (!query) {
     throw { status: 400, message: "Query parameter is missing" };
@@ -455,10 +441,9 @@ async function searchRecipes(
       // Cache empty results too to avoid repeated API calls
       await cacheManager.set(endpoint, cacheParams, emptyResult);
       return emptyResult;
-    }
-
-    const recipes = await getRecipesPreview(
-      response.data.results.map((recipe) => recipe.id)
+    }    const recipes = await getRecipesPreviewWithLikes(
+      response.data.results.map((recipe) => recipe.id),
+      user_id
     );
 
     // Store in cache

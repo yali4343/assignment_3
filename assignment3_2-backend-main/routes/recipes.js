@@ -72,18 +72,12 @@ router.get(
         cuisine,
         diet,
         intolerance,
-        sort
+        sort,
+        userId
       );
 
-      // Enhance with like information if user is logged in
-      let enhancedResults = results;
-      if (userId && results.length > 0) {
-        const recipeIds = results.map((recipe) => recipe.id);
-        enhancedResults = await recipes_utils.getRecipesPreviewWithLikes(
-          recipeIds,
-          userId
-        );
-      } // Save search results to database for lastSearch
+      // Results already include like information from searchRecipes
+      const enhancedResults = results;// Save search results to database for lastSearch
       if (req.session && req.session.user_id) {
         try {
           const user_utils = require("./utils/user_utils");

@@ -184,16 +184,19 @@ export default {
     };
 
     // Lifecycle
-    onMounted(() => {
-      checkUserStatus();
-      if (props.recipe.image) {
-        // Attempt to load the image if a URL is provided
-        // The <img @load> will set imageLoaded to true on success
-      } else {
-        imageAvailable.value = false;
-        imageLoaded.value = false; // No image to load, treat as not loaded for placeholder
-      }
-    });
+  onMounted(() => {
+    checkUserStatus();
+    
+    // If we have an image URL, set it as available
+    if (props.recipe.image && props.recipe.image.trim() !== '') {
+      imageAvailable.value = true;
+      imageLoaded.value = true; // Force to true to test if images show
+      // imageLoaded will be set to true by the @load event handler
+    } else {
+      imageAvailable.value = false;
+      imageLoaded.value = false;
+    }
+  });
 
     return {
       viewRecipe,
